@@ -2,447 +2,264 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>SENTINEL AI — Command Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>AXEROCAM · Command Center</title>
+  <link rel="stylesheet" href="/css/axerocam.css">
   <style>
-    :root {
-      --green:    #00e87a;
-      --dim:      #00a855;
-      --red:      #ff3636;
-      --blue:     #00c8ff;
-      --yellow:   #ffd600;
-      --orange:   #ff8c00;
-      --bg:       #040c09;
-      --surface:  #080f0c;
-      --surface2: #0c1810;
-      --border:   rgba(0,232,122,0.15);
-      --border2:  rgba(0,200,255,0.12);
-      --text:     #b8ccb8;
-      --text-dim: #5c7c5c;
-      --mono:     'Share Tech Mono', monospace;
-      --head:     'Rajdhani', sans-serif;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--mono);
-      overflow-x: hidden;
-    }
-
-    /* Global CRT scanlines */
-    body::after {
-      content: '';
-      position: fixed; inset: 0;
-      background: repeating-linear-gradient(
-        0deg, transparent, transparent 3px,
-        rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
-      );
-      pointer-events: none;
-      z-index: 9999;
-    }
-
-    /* ════════════════════ NAV ════════════════════ */
-    nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 20px;
-      background: rgba(0,232,122,0.03);
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 50;
-    }
-    .logo {
-      font-family: var(--head);
-      font-weight: 700;
-      font-size: 1.35rem;
-      letter-spacing: 4px;
-      color: var(--green);
-    }
-    .logo span { color: var(--blue); }
-    .logo sub {
-      font-size: 0.5rem;
-      letter-spacing: 2px;
-      color: var(--dim);
-      margin-left: 8px;
-      vertical-align: middle;
-    }
-    .nav-right { display: flex; gap: 10px; align-items: center; }
-    .live-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--red);
-      animation: blink 1s ease-in-out infinite;
-    }
-    .live-dot.active { background: var(--green); }
-    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
-    .nav-time { font-size: 0.65rem; color: var(--dim); letter-spacing: 1px; }
-    .nav-link {
-      font-size: 0.65rem;
-      color: var(--blue);
-      text-decoration: none;
-      padding: 4px 10px;
-      border: 1px solid rgba(0,200,255,0.25);
-      letter-spacing: 1px;
-      transition: all 0.2s;
-    }
-    .nav-link:hover { background: rgba(0,200,255,0.08); }
-
-    /* ════════════════════ LAYOUT ═════════════════ */
+    /* ═══ LAYOUT ════════════════════════════════ */
     .layout {
-      display: grid;
+      flex:1; display:grid;
       grid-template-columns: 1fr 320px;
-      grid-template-rows: auto 1fr;
-      gap: 0;
-      min-height: calc(100vh - 49px);
+      overflow:hidden; min-height:0;
     }
 
-    /* ── Left column ── */
-    .col-main {
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-    }
+    /* ── Left ── */
+    .col-main { display:flex; flex-direction:column; border-right:1px solid var(--border); overflow:hidden; min-height:0; }
 
-    /* ── Right column ── */
-    .col-side {
-      display: flex;
-      flex-direction: column;
-    }
+    /* ── Right ── */
+    .col-side { display:flex; flex-direction:column; overflow:hidden; min-height:0; }
 
-    /* ════════════════════ SECTION HEADERS ════════ */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
-      background: rgba(0,232,122,0.03);
-      border-bottom: 1px solid var(--border);
+    /* ═══ FEED VIEWER ═══════════════════════════ */
+    .feed-view {
+      flex:1; background:#000; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; min-height:0;
     }
-    .section-title {
-      font-family: var(--head);
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 3px;
-      color: var(--green);
-    }
-    .section-meta { font-size: 0.58rem; color: var(--text-dim); }
+    #dashFeed { width:100%; height:100%; object-fit:cover; display:none; }
 
-    /* ════════════════════ FEED PANEL ═════════════ */
-    .feed-panel {
-      position: relative;
-      background: #000;
-      overflow: hidden;
-    }
-    .feed-panel img {
-      width: 100%;
-      display: block;
-      min-height: 260px;
-      object-fit: cover;
-    }
     .feed-offline {
-      width: 100%;
-      min-height: 260px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      color: var(--dim);
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
     }
-    .feed-offline .icon { font-size: 2.2rem; }
-    .feed-offline p { font-size: 0.65rem; letter-spacing: 2px; }
+    .feed-offline.hidden { display:none; }
 
-    /* Corner brackets on feed */
-    .feed-panel::before { content: ''; position: absolute; top: 8px; left: 8px; width: 18px; height: 18px; border-top: 2px solid var(--green); border-left: 2px solid var(--green); z-index: 3; }
-    .feed-panel::after  { content: ''; position: absolute; bottom: 8px; right: 8px; width: 18px; height: 18px; border-bottom: 2px solid var(--green); border-right: 2px solid var(--green); z-index: 3; }
+    /* ═══ AI DECISION PANEL ══════════════════════ */
+    .decisions-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .decisions-scroll { flex:1; overflow-y:auto; min-height:0; }
 
-    /* ════════════════════ METRICS ROW ════════════ */
-    .metrics-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-    .metric {
-      padding: 12px 14px;
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-    .metric:last-child { border-right: none; }
-    .metric-label { font-size: 0.52rem; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
-    .metric-value { font-size: 1.2rem; color: var(--green); font-weight: bold; line-height: 1; }
-    .metric-sub   { font-size: 0.55rem; color: var(--text-dim); }
-
-    /* ════════════════════ CONTROLS ═══════════════ */
-    .controls-panel {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .ctrl-row { display: flex; gap: 8px; }
-    .btn {
-      flex: 1;
-      padding: 10px 6px;
-      font-family: var(--mono);
-      font-size: 0.62rem;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      cursor: pointer;
-      border: 1px solid;
-      background: transparent;
-      transition: all 0.15s;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: currentColor;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-    .btn:active::after { opacity: 0.12; }
-
-    .btn-green  { color: var(--green);  border-color: var(--green); }
-    .btn-green:hover  { background: rgba(0,232,122,0.08); box-shadow: 0 0 12px rgba(0,232,122,0.15); }
-    .btn-red    { color: var(--red);    border-color: var(--red);   }
-    .btn-red:hover    { background: rgba(255,54,54,0.08); }
-    .btn-blue   { color: var(--blue);   border-color: var(--blue);  }
-    .btn-blue:hover   { background: rgba(0,200,255,0.08); }
-    .btn-yellow { color: var(--yellow); border-color: var(--yellow);}
-    .btn-yellow:hover { background: rgba(255,214,0,0.08); }
-    .btn-orange { color: var(--orange); border-color: var(--orange);}
-    .btn-orange:hover { background: rgba(255,140,0,0.08); }
-
-    .btn.active-alert {
-      background: rgba(255,54,54,0.15);
-      animation: pulse-btn 1s ease-in-out infinite;
-    }
-    @keyframes pulse-btn {
-      0%,100% { box-shadow: 0 0 0 0 rgba(255,54,54,0.4); }
-      50%      { box-shadow: 0 0 0 6px rgba(255,54,54,0); }
+    /* ═══ THREAT METER PANEL ═════════════════════ */
+    .threat-panel {
+      padding:10px 13px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
     }
 
-    /* ════════════════════ GPS PANEL ══════════════ */
-    .gps-panel {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .gps-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .gps-item { display: flex; flex-direction: column; gap: 2px; }
-    .gps-label { font-size: 0.52rem; color: var(--text-dim); letter-spacing: 2px; }
-    .gps-value { font-size: 0.82rem; color: var(--blue); }
-
-    /* ════════════════════ DETECTION LOG ══════════ */
-    .log-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .log-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0;
-      max-height: 360px;
-    }
-    .log-body::-webkit-scrollbar { width: 4px; }
-    .log-body::-webkit-scrollbar-track { background: transparent; }
-    .log-body::-webkit-scrollbar-thumb { background: var(--border); }
-
-    .log-entry {
-      display: grid;
-      grid-template-columns: 40px 1fr 60px 55px;
-      align-items: center;
-      padding: 8px 14px;
-      border-bottom: 1px solid rgba(0,232,122,0.06);
-      font-size: 0.6rem;
-      gap: 8px;
-      animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-
-    .log-entry:hover { background: rgba(0,232,122,0.03); }
-    .log-id    { color: var(--text-dim); font-size: 0.55rem; }
-    .log-label { color: var(--green); }
-    .log-conf  { color: var(--yellow); text-align: right; }
-    .log-time  { color: var(--text-dim); font-size: 0.52rem; text-align: right; }
-
-    .empty-log {
-      padding: 24px;
-      text-align: center;
-      color: var(--text-dim);
-      font-size: 0.65rem;
-      letter-spacing: 1px;
+    /* ═══ STATS PANEL ════════════════════════════ */
+    .stats-panel {
+      display:grid; grid-template-columns:repeat(2,1fr);
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
     }
 
-    /* ════════════════════ SYSTEM LOG ══════════════ */
-    .sys-log {
-      padding: 10px 16px;
-      border-top: 1px solid var(--border);
-      max-height: 90px;
-      overflow-y: auto;
+    /* ═══ CONTROLS PANEL ════════════════════════ */
+    .ctrl-panel {
+      padding:10px 13px;
+      border-bottom:1px solid var(--border);
+      display:flex; flex-direction:column; gap:8px;
+      flex-shrink:0;
     }
-    .sys-log-line {
-      font-size: 0.58rem;
-      color: var(--text-dim);
-      line-height: 1.7;
-    }
-    .sys-log-line.info  { color: var(--blue); }
-    .sys-log-line.warn  { color: var(--yellow); }
-    .sys-log-line.alert { color: var(--red); }
-    .sys-log-line.ok    { color: var(--green); }
+    .ctrl-row { display:flex; gap:6px; }
+    .ctrl-row .btn { flex:1; font-size:0.56rem; }
+    .ctrl-lbl { font-size:0.46rem; color:var(--text-dim); letter-spacing:0.18em; margin-bottom:2px; }
 
-    /* ════════════════════ SNAPSHOT STRIP ═══════════ */
-    .snap-strip {
-      padding: 12px 16px;
-      border-top: 1px solid var(--border);
-    }
-    .snap-title { font-size: 0.58rem; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 8px; }
-    .snap-imgs  { display: flex; gap: 6px; flex-wrap: wrap; }
-    .snap-thumb {
-      width: 60px; height: 45px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    .snap-thumb:hover { border-color: var(--green); }
+    /* ═══ DETECTION LOG ══════════════════════════ */
+    .det-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .det-scroll { flex:1; overflow-y:auto; min-height:0; }
 
-    /* ════════════════════ MOBILE ADJUSTMENTS ═══════ */
-    @media (max-width: 700px) {
-      .layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto;
-      }
-      .col-main { border-right: none; border-bottom: 1px solid var(--border); }
-      .metrics-row { grid-template-columns: repeat(2, 1fr); }
-      .metric:nth-child(2) { border-right: none; }
+    /* ═══ SYS LOG ════════════════════════════════ */
+    .syslog-panel { flex-shrink:0; max-height:80px; overflow-y:auto; padding:6px 13px; border-top:1px solid var(--border); }
+
+    /* ═══ SNAPSHOTS ══════════════════════════════ */
+    .snap-panel { padding:8px 13px; border-top:1px solid var(--border); flex-shrink:0; }
+    .snap-lbl   { font-size:0.46rem; color:var(--text-dim); letter-spacing:0.16em; margin-bottom:6px; }
+
+    /* ═══ OLLAMA PANEL ═══════════════════════════ */
+    .ollama-panel {
+      padding:8px 13px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0; background: rgba(170,136,255,0.03);
+    }
+    .ollama-info { display:flex; flex-direction:column; gap:2px; }
+    .ollama-title { font-size:0.55rem; color:#aa88ff; letter-spacing:0.14em; }
+    .ollama-model { font-size:0.48rem; color:var(--text-dim); }
+
+    /* ═══ DECISION STAT BADGES ═══════════════════ */
+    .dec-stats {
+      display:flex; gap:6px; flex-wrap:wrap;
+      padding:8px 13px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+    }
+    .dec-stat {
+      padding:2px 7px;
+      border:1px solid;
+      font-size:0.48rem;
+      letter-spacing:0.1em;
+    }
+    .dec-stat.CRITICAL { color:var(--threat-critical); border-color:rgba(255,23,68,0.3); }
+    .dec-stat.HIGH     { color:var(--threat-high);     border-color:rgba(255,109,0,0.3); }
+    .dec-stat.MEDIUM   { color:var(--threat-medium);   border-color:rgba(255,214,0,0.3); }
+    .dec-stat.LOW      { color:var(--threat-low);      border-color:rgba(118,255,3,0.3); }
+    .dec-stat.CLEAR    { color:var(--threat-clear);    border-color:rgba(0,229,255,0.25); }
+
+    /* ═══ MOBILE ═════════════════════════════════ */
+    @media (max-width: 640px) {
+      .layout { grid-template-columns:1fr; overflow-y:auto; }
+      .col-main { border-right:none; border-bottom:1px solid var(--border); min-height:0; }
+      .feed-view { min-height:220px; }
+      .col-side  { max-height:none; }
     }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="logo">SENTINEL <span>AI</span><sub>v1.0 · AXEROAI</sub></div>
+<div class="alert-banner" id="alertBanner">⚠ CRITICAL ALERT — AI AGENT HAS FLAGGED IMMEDIATE THREAT</div>
+
+<nav class="nav">
+  <div class="nav-logo">AXERO<span class="accent">CAM</span><span class="version">v2.0 · COMMAND CENTER</span></div>
+  <div class="nav-center hide-mobile">
+    <div class="status-chip" id="camChip"><div class="dot" id="camDot"></div><span id="camTxt">OFFLINE</span></div>
+    <div class="status-chip" id="agentChip"><div class="dot" id="agentDot"></div><span id="agentTxt">AGENT</span></div>
+  </div>
   <div class="nav-right">
-    <div class="live-dot" id="liveDot"></div>
-    <span class="nav-time" id="navTime">--:--:--</span>
+    <span class="nav-time" id="navTime">00:00:00</span>
     <a href="/" class="nav-link">📡 FEED</a>
   </div>
 </nav>
 
 <div class="layout">
 
-  <!-- ════ LEFT COLUMN ════ -->
+  <!-- ════════════ LEFT COLUMN ════════════ -->
   <div class="col-main">
 
-    <!-- Feed panel -->
-    <div class="section-header">
-      <span class="section-title">📷 LIVE CAMERA</span>
-      <span class="section-meta" id="feedMeta">INITIALIZING…</span>
+    <!-- Feed relay -->
+    <div class="sec-head">
+      <span class="sec-title">📷 RELAY FEED</span>
+      <span class="sec-meta" id="feedMeta">AWAITING STREAM</span>
     </div>
-    <div class="feed-panel" id="feedPanel">
-      <img id="feedImg" src="/video_feed" alt="Live"
-           style="display:none;"
-           onerror="feedError()">
+    <div class="feed-view">
+      <img id="dashFeed" src="" alt="">
       <div class="feed-offline" id="feedOffline">
-        <div class="icon">📡</div>
-        <p>NO SIGNAL</p>
-        <p style="font-size:0.58rem; margin-top:4px">Use controls to start camera</p>
+        <div class="no-signal-box">
+          <div style="font-size:0.7rem; letter-spacing:0.2em; font-family:var(--terminal); color:var(--text-dim)">NO SIGNAL</div>
+          <div style="font-size:0.5rem; color:var(--text-faint); margin-top:4px; letter-spacing:0.12em">Open feed page to start camera</div>
+        </div>
       </div>
     </div>
 
-    <!-- Metrics -->
-    <div class="metrics-row">
-      <div class="metric">
-        <div class="metric-label">STATUS</div>
-        <div class="metric-value" id="mStatus" style="font-size:0.9rem">OFFLINE</div>
+    <!-- Threat meter -->
+    <div class="threat-panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <span style="font-family:var(--terminal); font-size:0.75rem; letter-spacing:0.16em; color:var(--cyan)">THREAT ASSESSMENT</span>
+        <span style="font-size:0.48rem; color:var(--text-dim)" id="threatMode">MODE: RULE-BASED</span>
       </div>
-      <div class="metric">
-        <div class="metric-label">FPS</div>
-        <div class="metric-value" id="mFps">—</div>
+      <div class="threat-row">
+        <span class="threat-label" id="tLevelLabel">CLEAR</span>
+        <div class="threat-bar-wrap">
+          <div class="threat-bar-fill" id="tBarFill" style="width:0%;"></div>
+        </div>
+        <span class="threat-score" id="tScore">0</span>
       </div>
-      <div class="metric">
-        <div class="metric-label">DETECTIONS</div>
-        <div class="metric-value" id="mDet">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">TEMP</div>
-        <div class="metric-value" id="mTemp">—</div>
-        <div class="metric-sub">AMBIENT °C</div>
-      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-panel">
+      <div class="metric"><div class="metric-label">CAMERA</div><div class="metric-value" id="mCam" style="font-size:0.88rem;color:var(--text-dim)">OFFLINE</div></div>
+      <div class="metric"><div class="metric-label">FPS</div><div class="metric-value" id="mFps">—</div></div>
+      <div class="metric"><div class="metric-label">TOTAL DET.</div><div class="metric-value" id="mTotalDet">0</div></div>
+      <div class="metric"><div class="metric-label">CLIENTS</div><div class="metric-value" id="mClients">—</div></div>
     </div>
 
     <!-- Controls -->
-    <div class="controls-panel">
-      <div class="section-title" style="font-size:0.65rem; letter-spacing:2px">⚙ CAMERA CONTROL</div>
+    <div class="ctrl-panel">
+      <div class="ctrl-lbl">⚙ OPERATOR CONTROLS</div>
       <div class="ctrl-row">
-        <button class="btn btn-green" onclick="startCamera()">▶ START CAM</button>
-        <button class="btn btn-red"   onclick="stopCamera()">■ STOP CAM</button>
-        <button class="btn btn-blue"  onclick="snapshot()">⊙ SNAPSHOT</button>
+        <button class="btn btn-cyan"   onclick="openFeed()">📡 OPEN FEED</button>
+        <button class="btn btn-yellow" onclick="triggerAgentSim()">🤖 RUN AGENT</button>
+        <button class="btn btn-red"    onclick="clearAll()">✕ CLEAR ALL</button>
       </div>
       <div class="ctrl-row">
-        <button class="btn btn-yellow" id="alertBtn" onclick="toggleAlert()">⚠ TOGGLE ALERT</button>
-        <button class="btn btn-orange" onclick="clearLog()">✕ CLEAR LOG</button>
-      </div>
-    </div>
-
-    <!-- System log -->
-    <div class="sys-log" id="sysLog">
-      <div class="sys-log-line info">[SENTINEL] System initialized.</div>
-      <div class="sys-log-line ok">[SENTINEL] Dashboard loaded. Awaiting camera start.</div>
-    </div>
-
-    <!-- Snapshot strip -->
-    <div class="snap-strip">
-      <div class="snap-title">RECENT SNAPSHOTS</div>
-      <div class="snap-imgs" id="snapStrip">
-        <span style="font-size:0.6rem; color:var(--text-dim)">No snapshots yet.</span>
-      </div>
-    </div>
-
-  </div><!-- /col-main -->
-
-  <!-- ════ RIGHT COLUMN ════ -->
-  <div class="col-side">
-
-    <!-- GPS panel -->
-    <div class="section-header">
-      <span class="section-title">📍 GPS / LOCATION</span>
-      <span class="section-meta" id="gpsMeta">SIM</span>
-    </div>
-    <div class="gps-panel">
-      <div class="gps-grid">
-        <div class="gps-item"><div class="gps-label">LATITUDE</div><div class="gps-value" id="gLat">—</div></div>
-        <div class="gps-item"><div class="gps-label">LONGITUDE</div><div class="gps-value" id="gLon">—</div></div>
-        <div class="gps-item"><div class="gps-label">DETECTOR</div><div class="gps-value" id="gDet" style="color:var(--green)">—</div></div>
-        <div class="gps-item"><div class="gps-label">ALERT</div><div class="gps-value" id="gAlert" style="color:var(--red)">OFF</div></div>
+        <button class="btn" id="alertBtn" onclick="toggleAlert()">⚠ TOGGLE ALERT</button>
+        <button class="btn" id="agentToggleBtn" onclick="toggleAgent()">🤖 AGENT: ON</button>
+        <button class="btn btn-cyan" onclick="refreshStatus()">↺ REFRESH</button>
       </div>
     </div>
 
     <!-- Detection log -->
-    <div class="section-header" style="margin-top:0">
-      <span class="section-title">🎯 DETECTION LOG</span>
-      <span class="section-meta" id="logCount">0 RECORDS</span>
+    <div class="det-panel">
+      <div class="sec-head">
+        <span class="sec-title">🎯 DETECTIONS</span>
+        <span class="sec-meta" id="detMeta">0 RECORDS</span>
+      </div>
+      <div class="log-header">
+        <span>#</span><span>TARGET</span><span style="text-align:right">CONF</span><span style="text-align:right">TIME</span>
+      </div>
+      <div class="det-scroll" id="detScroll">
+        <div class="log-empty">— NO DETECTIONS —</div>
+      </div>
     </div>
 
-    <div class="log-panel">
-      <div style="display:grid; grid-template-columns:40px 1fr 60px 55px; padding:6px 14px; border-bottom:1px solid var(--border); font-size:0.52rem; color:var(--text-dim); letter-spacing:1px; gap:8px;">
-        <span>#ID</span><span>TARGET</span><span style="text-align:right">CONF</span><span style="text-align:right">TIME</span>
+    <!-- Sys log -->
+    <div class="syslog-panel" id="syslogPanel"></div>
+
+  </div><!-- /col-main -->
+
+  <!-- ════════════ RIGHT COLUMN ════════════ -->
+  <div class="col-side">
+
+    <!-- Ollama status -->
+    <div class="ollama-panel">
+      <div class="ollama-info">
+        <div class="ollama-title">🧠 OLLAMA LLM STATUS</div>
+        <div class="ollama-model" id="ollamaModel">Checking…</div>
       </div>
-      <div class="log-body" id="logBody">
-        <div class="empty-log">— NO DETECTIONS YET —</div>
+      <div class="ollama-badge" id="ollamaBadge">
+        <div class="dot" id="ollamaDot"></div>
+        <span id="ollamaTxt">—</span>
+      </div>
+    </div>
+
+    <!-- GPS -->
+    <div class="sec-head">
+      <span class="sec-title">📍 LOCATION</span>
+      <span class="sec-meta" id="gpsMeta">LIVE</span>
+    </div>
+    <div class="gps-grid">
+      <div class="gps-item"><div class="gps-lbl">LATITUDE</div><div class="gps-val" id="gLat">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">LONGITUDE</div><div class="gps-val" id="gLon">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">TEMPERATURE</div><div class="gps-val" id="gTemp">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">UPTIME</div><div class="gps-val" id="gUptime">—</div></div>
+    </div>
+
+    <!-- Decision stats -->
+    <div class="dec-stats" id="decStats">
+      <span class="dec-stat CRITICAL" id="dsCritical">CRITICAL: 0</span>
+      <span class="dec-stat HIGH"     id="dsHigh">HIGH: 0</span>
+      <span class="dec-stat MEDIUM"   id="dsMedium">MED: 0</span>
+      <span class="dec-stat LOW"      id="dsLow">LOW: 0</span>
+      <span class="dec-stat CLEAR"    id="dsClear">CLEAR: 0</span>
+    </div>
+
+    <!-- AI Decisions -->
+    <div class="decisions-panel">
+      <div class="sec-head">
+        <span class="sec-title">🤖 AI DECISIONS</span>
+        <span class="sec-meta" id="decMeta">0 ENTRIES</span>
+      </div>
+      <div class="decisions-scroll" id="decisionsScroll">
+        <div class="log-empty">— AGENT AWAITING DETECTIONS —</div>
+      </div>
+    </div>
+
+    <!-- Snapshots -->
+    <div class="snap-panel">
+      <div class="snap-lbl">RECENT SNAPSHOTS</div>
+      <div class="snap-row" id="snapRow">
+        <span style="font-size:0.52rem; color:var(--text-faint)">None yet.</span>
       </div>
     </div>
 
@@ -450,180 +267,311 @@
 
 </div><!-- /layout -->
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-  let alertActive = false;
-  let snapshots   = [];
+'use strict';
 
-  /* ── Clock ── */
-  function tick() {
-    const now = new Date();
-    document.getElementById('navTime').textContent =
-      now.toTimeString().substring(0, 8);
+// ── State ──────────────────────────────────────────────────────
+let alertActive  = false;
+let agentEnabled = true;
+let detCache     = [];
+let decCache     = [];
+let snapCache    = [];
+let frameTimer   = null;
+
+// ── Socket ─────────────────────────────────────────────────────
+const socket = io({ reconnectionAttempts: 30 });
+
+socket.on('connect', () => {
+  socket.emit('join_room', 'dashboard');
+  socket.emit('request_state');
+  cls('ollamaDot', 'on');
+  addSysLog('ok', 'Connected to AXEROCAM server.');
+});
+
+socket.on('disconnect', () => {
+  cls('ollamaDot', '');
+  addSysLog('warn', 'Server connection lost.');
+});
+
+// ── Full state on connect ───────────────────────────────────────
+socket.on('server_state', (s) => {
+  setCam(s.cameraActive);
+  setAlert(s.alertActive);
+  setAgent(s.agentEnabled);
+  setText('mTotalDet', s.totalDetections);
+  setText('mFps',      s.fps ? s.fps.toFixed(1) : '—');
+  setText('mClients',  s.connectedClients);
+  setText('ollamaModel', `Model: ${s.ollamaModel || 'N/A'}`);
+  setText('threatMode', `MODE: ${s.ollamaStatus === 'ONLINE' ? 'LLM ('+s.ollamaModel+')' : 'RULE-BASED'}`);
+  setOllama(s.ollamaStatus);
+  updateThreat(s.currentThreat, null, 0);
+  updateDecStats(s.decisionStats || {});
+  detCache = s.detectionLog || [];
+  renderDets();
+  decCache = s.decisions || [];
+  renderDecs();
+  snapCache = s.snapshotLog || [];
+  renderSnaps();
+  (s.sysLog || []).reverse().forEach(e => addSysLog(e.level, e.msg));
+});
+
+// ── Frame relay ────────────────────────────────────────────────
+socket.on('frame', (data) => {
+  const img = document.getElementById('dashFeed');
+  img.src   = data.imageData;
+  img.style.display = 'block';
+  document.getElementById('feedOffline').classList.add('hidden');
+  setText('feedMeta', `${data.fps ? data.fps.toFixed(1) : '—'} FPS · RELAY ACTIVE`);
+  setText('mFps',     data.fps ? data.fps.toFixed(1) : '—');
+  clearTimeout(frameTimer);
+  frameTimer = setTimeout(() => {
+    img.style.display = 'none';
+    document.getElementById('feedOffline').classList.remove('hidden');
+    setText('feedMeta', 'STREAM TIMEOUT');
+  }, 4500);
+});
+
+// ── Camera state ───────────────────────────────────────────────
+socket.on('camera_state',   ({ active }) => {
+  setCam(active);
+  if (!active) {
+    document.getElementById('dashFeed').style.display = 'none';
+    document.getElementById('feedOffline').classList.remove('hidden');
+    setText('feedMeta', 'CAMERA OFFLINE');
   }
-  setInterval(tick, 1000); tick();
+});
 
-  /* ── Sys log helper ── */
-  function sysLog(msg, type='info') {
-    const el = document.getElementById('sysLog');
-    const div = document.createElement('div');
-    div.className = `sys-log-line ${type}`;
-    div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-    el.insertBefore(div, el.firstChild);
-    while (el.children.length > 20) el.removeChild(el.lastChild);
-  }
+// ── New detection ───────────────────────────────────────────────
+socket.on('new_detection', (r) => {
+  detCache.unshift(r);
+  if (detCache.length > 100) detCache.pop();
+  renderDets();
+  setText('mTotalDet', r.id);
+  addSysLog('info', `Detection: ${r.label} @ ${r.confidence}% conf`);
+});
 
-  /* ── Feed error ── */
-  function feedError() {
-    document.getElementById('feedImg').style.display = 'none';
-    document.getElementById('feedOffline').style.display = 'flex';
-  }
+// ── AI decision from agent ──────────────────────────────────────
+socket.on('agent_decision', (dec) => {
+  decCache.unshift(dec);
+  if (decCache.length > 100) decCache.pop();
+  renderDecs();
+  updateThreat(dec.threatLevel, dec.threatColor, dec.score);
+  updateDecStats(null, dec);
+  setText('decMeta', decCache.length + ' ENTRIES');
+  addSysLog('agent', `[AI:${dec.agentMode}] ${dec.threatLevel} (${dec.score}/100) — ${dec.narrative.slice(0,70)}…`);
+});
 
-  /* ── Start camera ── */
-  async function startCamera() {
-    sysLog('Starting camera…', 'info');
-    await fetch('/api/control/camera', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action:'start'})
-    });
-    setTimeout(() => {
-      const img = document.getElementById('feedImg');
-      img.src = '/video_feed?' + Date.now();
-      img.style.display = 'block';
-      document.getElementById('feedOffline').style.display = 'none';
-      sysLog('Camera started.', 'ok');
-    }, 800);
-  }
+// ── Threat level broadcast ──────────────────────────────────────
+socket.on('threat_level', ({ level, color, score }) => {
+  updateThreat(level, color, score);
+});
 
-  /* ── Stop camera ── */
-  async function stopCamera() {
-    await fetch('/api/control/camera', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action:'stop'})
-    });
-    feedError();
-    sysLog('Camera stopped.', 'warn');
-  }
+// ── Alert ───────────────────────────────────────────────────────
+socket.on('alert_state', ({ active }) => setAlert(active));
 
-  /* ── Snapshot ── */
-  async function snapshot() {
-    const res = await fetch('/api/snapshot', {method:'POST'});
-    const d   = await res.json();
-    if (d.file) {
-      sysLog(`Snapshot saved: ${d.file}`, 'ok');
-      snapshots.unshift(d.file);
-      renderSnaps();
-    } else {
-      sysLog('Snapshot failed — no frame.', 'alert');
-    }
-  }
+// ── Agent state ─────────────────────────────────────────────────
+socket.on('agent_state', ({ enabled }) => setAgent(enabled));
 
-  function renderSnaps() {
-    const strip = document.getElementById('snapStrip');
-    if (!snapshots.length) {
-      strip.innerHTML = '<span style="font-size:0.6rem;color:var(--text-dim)">No snapshots yet.</span>';
-      return;
-    }
-    strip.innerHTML = snapshots.slice(0, 6).map(f =>
-      `<img class="snap-thumb" src="/snapshots/${f}" title="${f}"
-            onclick="window.open('/snapshots/${f}','_blank')">`
-    ).join('');
-  }
+// ── Snapshot saved ──────────────────────────────────────────────
+socket.on('snapshot_saved', (e) => {
+  snapCache.unshift(e);
+  if (snapCache.length > 10) snapCache.pop();
+  renderSnaps();
+  addSysLog('ok', `Snapshot: ${e.filename}`);
+});
 
-  /* ── Alert toggle ── */
-  async function toggleAlert() {
-    alertActive = !alertActive;
-    await fetch('/api/control/alert', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action: alertActive ? 'on' : 'off'})
-    });
-    const btn = document.getElementById('alertBtn');
-    btn.classList.toggle('active-alert', alertActive);
-    document.getElementById('gAlert').textContent = alertActive ? 'ACTIVE' : 'OFF';
-    sysLog(alertActive ? 'ALERT activated.' : 'Alert deactivated.', alertActive ? 'alert' : 'info');
-  }
+// ── GPS ─────────────────────────────────────────────────────────
+socket.on('gps_update', (c) => {
+  setText('gLat', c.lat ? c.lat.toFixed(5) : '—');
+  setText('gLon', c.lon ? c.lon.toFixed(5) : '—');
+});
 
-  /* ── Clear log ── */
-  async function clearLog() {
-    await fetch('/api/detections/clear', {method:'POST'});
-    document.getElementById('logBody').innerHTML = '<div class="empty-log">— NO DETECTIONS YET —</div>';
-    document.getElementById('logCount').textContent = '0 RECORDS';
-    sysLog('Detection log cleared.', 'warn');
-  }
+// ── Client count ────────────────────────────────────────────────
+socket.on('client_count',   (n) => setText('mClients', n));
+socket.on('detection_count',(n) => setText('mTotalDet', n));
 
-  /* ── Poll status ── */
-  async function pollStatus() {
-    try {
-      const res  = await fetch('/api/status');
-      const data = await res.json();
+socket.on('detections_cleared', () => { detCache=[]; renderDets(); });
+socket.on('decisions_cleared',  () => { decCache=[]; renderDecs(); });
 
-      const active = data.camera_active;
-      document.getElementById('liveDot').classList.toggle('active', active);
-      document.getElementById('mStatus').textContent = active ? 'LIVE' : 'OFFLINE';
-      document.getElementById('mStatus').style.color = active ? 'var(--green)' : 'var(--red)';
-      document.getElementById('feedMeta').textContent = active
-        ? `${data.fps} FPS · ${data.detector_type}`
-        : 'OFFLINE';
-      document.getElementById('mFps').textContent  = data.fps;
-      document.getElementById('mDet').textContent  = data.total_detections;
-      document.getElementById('mTemp').textContent = data.temperature;
-      document.getElementById('gLat').textContent  = data.lat;
-      document.getElementById('gLon').textContent  = data.lon;
-      document.getElementById('gDet').textContent  = data.detector_type;
-      alertActive = data.alert_active;
-      document.getElementById('gAlert').textContent = alertActive ? 'ACTIVE' : 'OFF';
-      document.getElementById('alertBtn').classList.toggle('active-alert', alertActive);
+socket.on('sys_log', (e) => addSysLog(e.level, e.msg));
 
-      if (active && document.getElementById('feedImg').style.display === 'none') {
-        const img = document.getElementById('feedImg');
-        img.src = '/video_feed?' + Date.now();
-        img.style.display = 'block';
-        document.getElementById('feedOffline').style.display = 'none';
-      }
-    } catch(e) {}
-  }
+// ═══════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════
+function setText(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+function cls(id, c) { const e=document.getElementById(id); if(!e) return; e.className='dot'; if(c) e.classList.add(c); }
 
-  /* ── Poll detections ── */
-  async function pollDetections() {
-    try {
-      const res  = await fetch('/api/detections');
-      const data = await res.json();
-      document.getElementById('logCount').textContent = data.length + ' RECORDS';
+function setCam(active) {
+  cls('camDot', active?'on':'');
+  setText('camTxt', active?'LIVE':'OFFLINE');
+  document.getElementById('camChip').className='status-chip'+(active?' active':'');
+  const m = document.getElementById('mCam');
+  if(m) { m.textContent=active?'LIVE':'OFFLINE'; m.style.color=active?'var(--green)':'var(--text-dim)'; }
+}
 
-      const body = document.getElementById('logBody');
-      if (!data.length) {
-        body.innerHTML = '<div class="empty-log">— NO DETECTIONS YET —</div>';
-        return;
-      }
+function setAlert(active) {
+  alertActive = active;
+  document.getElementById('alertBanner').classList.toggle('show', active);
+  const btn = document.getElementById('alertBtn');
+  if(btn) { btn.textContent=active?'⚠ ALERT: ON':'⚠ TOGGLE ALERT'; btn.className=active?'btn active-alert':'btn btn-orange'; }
+}
 
-      body.innerHTML = data.map(r => {
-        const t = r.timestamp ? r.timestamp.substring(11, 19) : '??:??:??';
-        return `
-          <div class="log-entry">
-            <span class="log-id">#${String(r.id).padStart(3,'0')}</span>
-            <span class="log-label">● ${r.label}</span>
-            <span class="log-conf">${r.confidence}%</span>
-            <span class="log-time">${t}</span>
-          </div>`;
-      }).join('');
-    } catch(e) {}
-  }
+function setAgent(enabled) {
+  agentEnabled = enabled;
+  const btn = document.getElementById('agentToggleBtn');
+  if(btn) { btn.textContent=`🤖 AGENT: ${enabled?'ON':'OFF'}`; btn.className=enabled?'btn btn-green':'btn btn-red'; }
+  cls('agentDot', enabled?'on':'err');
+  setText('agentTxt', enabled?'ACTIVE':'OFF');
+  document.getElementById('agentChip').className='status-chip'+(enabled?' active':'');
+}
 
-  setInterval(pollStatus,     2000);
-  setInterval(pollDetections, 3000);
-  pollStatus();
-  pollDetections();
+function setOllama(status) {
+  const isOn = status === 'ONLINE';
+  cls('ollamaDot', isOn?'on':'warn');
+  setText('ollamaTxt', status);
+}
 
-  /* Auto-show feed if camera running on load */
-  fetch('/api/status').then(r=>r.json()).then(d=>{
-    if(d.camera_active) {
-      const img = document.getElementById('feedImg');
-      img.style.display = 'block';
-      document.getElementById('feedOffline').style.display = 'none';
-    }
+const COLORS = { CRITICAL:'var(--threat-critical)', HIGH:'var(--threat-high)', MEDIUM:'var(--threat-medium)', LOW:'var(--threat-low)', CLEAR:'var(--threat-clear)' };
+
+function updateThreat(level, color, score) {
+  const c = color || COLORS[level] || 'var(--cyan)';
+  const el = document.getElementById('tLevelLabel');
+  if(el) { el.textContent=level; el.style.color=c; }
+  const fill = document.getElementById('tBarFill');
+  if(fill) { fill.style.width=(score||0)+'%'; fill.style.background=c; }
+  const sc = document.getElementById('tScore');
+  if(sc) { sc.textContent=(score||0); sc.style.color=c; }
+}
+
+let _decStatTotals = { CRITICAL:0, HIGH:0, MEDIUM:0, LOW:0, CLEAR:0 };
+
+function updateDecStats(stats, newDec) {
+  if(stats) { _decStatTotals = { ...stats }; }
+  if(newDec) { _decStatTotals[newDec.threatLevel] = (_decStatTotals[newDec.threatLevel]||0)+1; }
+  setText('dsCritical', 'CRITICAL: '+(_decStatTotals.CRITICAL||0));
+  setText('dsHigh',     'HIGH: '    +(_decStatTotals.HIGH||0));
+  setText('dsMedium',   'MED: '     +(_decStatTotals.MEDIUM||0));
+  setText('dsLow',      'LOW: '     +(_decStatTotals.LOW||0));
+  setText('dsClear',    'CLEAR: '   +(_decStatTotals.CLEAR||0));
+}
+
+// ── Render detection log ────────────────────────────────────────
+function renderDets() {
+  const el = document.getElementById('detScroll');
+  setText('detMeta', detCache.length+' RECORDS');
+  if(!detCache.length) { el.innerHTML='<div class="log-empty">— NO DETECTIONS —</div>'; return; }
+  el.innerHTML = detCache.slice(0,60).map(r => {
+    const t = r.timestamp ? r.timestamp.slice(11,19) : '--:--:--';
+    const cc = r.confidence>=80?'#ff6666':r.confidence>=60?'#ffcc44':'var(--green)';
+    return `<div class="log-entry">
+      <span class="log-id">#${String(r.id).padStart(3,'0')}</span>
+      <span class="log-lbl">● ${r.label}</span>
+      <span class="log-conf" style="color:${cc}">${r.confidence}%</span>
+      <span class="log-time">${t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Render AI decision cards ────────────────────────────────────
+function renderDecs() {
+  const el = document.getElementById('decisionsScroll');
+  setText('decMeta', decCache.length+' ENTRIES');
+  if(!decCache.length) { el.innerHTML='<div class="log-empty">— AGENT AWAITING DETECTIONS —</div>'; return; }
+  el.innerHTML = decCache.slice(0,40).map(d => {
+    const t = d.timestamp ? d.timestamp.slice(11,19) : '--:--:--';
+    const scoreBar = Math.round((d.score/100)*60);
+    return `<div class="decision-card ${d.threatLevel}">
+      <div class="decision-header">
+        <span class="decision-level ${d.threatLevel}">▸ ${d.threatLevel} [${d.score}/100]</span>
+        <span class="decision-meta">${t} · TGT:${d.targetCount}</span>
+      </div>
+      <div class="decision-narrative">${escHtml(d.narrative || '')}</div>
+      <div class="decision-action">${escHtml(d.simulatedActions || '')}</div>
+      <div class="decision-agent">⚙ ${d.agentMode} · CONF:${d.maxConfidence}% · ID:${d.id||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Render snapshots ────────────────────────────────────────────
+function renderSnaps() {
+  const el = document.getElementById('snapRow');
+  if(!snapCache.length) { el.innerHTML='<span style="font-size:0.5rem;color:var(--text-faint)">None yet.</span>'; return; }
+  el.innerHTML = snapCache.slice(0,6).map(s =>
+    `<img class="snap-thumb" src="${s.url}" title="${s.filename}"
+         onclick="window.open('${s.url}','_blank')"
+         onerror="this.style.display='none'">`
+  ).join('');
+}
+
+// ── Add sys log line ─────────────────────────────────────────────
+function addSysLog(level, msg) {
+  const el  = document.getElementById('syslogPanel');
+  const t   = new Date().toLocaleTimeString('en-GB');
+  const div = document.createElement('div');
+  div.className = `syslog-line ${level}`;
+  div.textContent = `[${t}] ${msg}`;
+  el.insertBefore(div, el.firstChild);
+  while(el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+// ═══════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════
+function openFeed() { window.open('/','_blank'); }
+
+async function triggerAgentSim() {
+  // Sends a simulated detection payload to the agent for testing
+  socket.emit('trigger_agent_analysis', {
+    targets: [
+      { label:'HUMAN', confidence: 0.78 + Math.random()*0.2, bbox:[50,80,200,300] },
+      ...(Math.random() > 0.5 ? [{ label:'HUMAN', confidence: 0.55+Math.random()*0.3, bbox:[300,100,180,280] }] : []),
+    ],
+    lat:  28.6139 + (Math.random()-0.5)*0.01,
+    lon:  77.2090 + (Math.random()-0.5)*0.01,
+    temp: (28+Math.random()*8).toFixed(1),
+    timestamp: new Date().toISOString(),
   });
+  addSysLog('agent', 'Manual agent simulation triggered.');
+}
+
+async function clearAll() {
+  if(!confirm('Clear all detection + decision logs?')) return;
+  await fetch('/api/detections/clear', { method:'POST' });
+  await fetch('/api/decisions/clear',  { method:'POST' });
+}
+
+async function toggleAlert() {
+  alertActive = !alertActive;
+  await fetch('/api/alert', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({active:alertActive}) });
+}
+
+async function toggleAgent() {
+  await fetch('/api/agent/toggle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:!agentEnabled}) });
+}
+
+async function refreshStatus() {
+  try {
+    const d = await fetch('/api/status').then(r=>r.json());
+    setText('mFps',     d.fps);
+    setText('mTotalDet',d.totalDetections);
+    setText('mClients', d.connectedClients);
+    setText('gUptime',  d.uptime+'s');
+    setText('ollamaModel', 'Model: '+d.ollamaModel);
+    setOllama(d.ollamaStatus);
+    updateDecStats(d.decisionStats || {});
+    addSysLog('ok','Status refreshed.');
+  } catch(e) { addSysLog('error','Refresh failed: '+e.message); }
+}
+
+// ── Clock + periodic refresh ─────────────────────────────────────
+setInterval(() => setText('navTime', new Date().toTimeString().slice(0,8)), 1000);
+setInterval(refreshStatus, 12000);
+refreshStatus();
 </script>
 </body>
 </html>
