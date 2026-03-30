@@ -1,0 +1,28 @@
+# ╔══════════════════════════════════════════════════╗
+# ║  SENTINEL AI — Python Requirements               ║
+# ║  Optimized for Termux / Android / Low-resource   ║
+# ╚══════════════════════════════════════════════════╝
+
+# Web server
+flask>=2.3.0
+
+# Computer vision (core — required)
+opencv-python-headless>=4.8.0
+
+# NumPy (required by OpenCV)
+numpy>=1.24.0
+
+# ─────────────────────────────────────────────────────
+# OPTIONAL: YOLO-based detection (better accuracy)
+# Uncomment the line below to enable YOLOv5/v8.
+# Note: First run will auto-download ~6MB model.
+# On Termux, you may need: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# ─────────────────────────────────────────────────────
+# ultralytics>=8.0.0
+
+# ─────────────────────────────────────────────────────
+# OPTIONAL: Real GPS via Termux API
+# Install Termux:API app, then:
+#   pkg install termux-api
+# No extra Python package needed — uses subprocess call.
+# ─────────────────────────────────────────────────────
