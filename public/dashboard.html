@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>AXEROCAM · Command Center</title>
+  <link rel="stylesheet" href="/css/axerocam.css">
+  <style>
+    body { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+    /* ═══ LAYOUT ════════════════════════════════ */
+    .layout {
+      flex:1; display:grid;
+      grid-template-columns: 1fr 320px;
+      overflow:hidden; min-height:0;
+    }
+
+    /* ── Left ── */
+    .col-main { display:flex; flex-direction:column; border-right:1px solid var(--border); overflow:hidden; min-height:0; }
+
+    /* ── Right ── */
+    .col-side { display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+
+    /* ═══ FEED VIEWER ═══════════════════════════ */
+    .feed-view {
+      flex:1; background:#000; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; min-height:0;
+    }
+    #dashFeed { width:100%; height:100%; object-fit:cover; display:none; }
+
+    .feed-offline {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    }
+    .feed-offline.hidden { display:none; }
+
+    /* ═══ AI DECISION PANEL ══════════════════════ */
+    .decisions-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .decisions-scroll { flex:1; overflow-y:auto; min-height:0; }
+
+    /* ═══ THREAT METER PANEL ═════════════════════ */
+    .threat-panel {
+      padding:10px 13px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+    }
+
+    /* ═══ STATS PANEL ════════════════════════════ */
+    .stats-panel {
+      display:grid; grid-template-columns:repeat(2,1fr);
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+    }
+
+    /* ═══ CONTROLS PANEL ════════════════════════ */
+    .ctrl-panel {
+      padding:10px 13px;
+      border-bottom:1px solid var(--border);
+      display:flex; flex-direction:column; gap:8px;
+      flex-shrink:0;
+    }
+    .ctrl-row { display:flex; gap:6px; }
+    .ctrl-row .btn { flex:1; font-size:0.56rem; }
+    .ctrl-lbl { font-size:0.46rem; color:var(--text-dim); letter-spacing:0.18em; margin-bottom:2px; }
+
+    /* ═══ DETECTION LOG ══════════════════════════ */
+    .det-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .det-scroll { flex:1; overflow-y:auto; min-height:0; }
+
+    /* ═══ SYS LOG ════════════════════════════════ */
+    .syslog-panel { flex-shrink:0; max-height:80px; overflow-y:auto; padding:6px 13px; border-top:1px solid var(--border); }
+
+    /* ═══ SNAPSHOTS ══════════════════════════════ */
+    .snap-panel { padding:8px 13px; border-top:1px solid var(--border); flex-shrink:0; }
+    .snap-lbl   { font-size:0.46rem; color:var(--text-dim); letter-spacing:0.16em; margin-bottom:6px; }
+
+    /* ═══ OLLAMA PANEL ═══════════════════════════ */
+    .ollama-panel {
+      padding:8px 13px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0; background: rgba(170,136,255,0.03);
+    }
+    .ollama-info { display:flex; flex-direction:column; gap:2px; }
+    .ollama-title { font-size:0.55rem; color:#aa88ff; letter-spacing:0.14em; }
+    .ollama-model { font-size:0.48rem; color:var(--text-dim); }
+
+    /* ═══ DECISION STAT BADGES ═══════════════════ */
+    .dec-stats {
+      display:flex; gap:6px; flex-wrap:wrap;
+      padding:8px 13px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+    }
+    .dec-stat {
+      padding:2px 7px;
+      border:1px solid;
+      font-size:0.48rem;
+      letter-spacing:0.1em;
+    }
+    .dec-stat.CRITICAL { color:var(--threat-critical); border-color:rgba(255,23,68,0.3); }
+    .dec-stat.HIGH     { color:var(--threat-high);     border-color:rgba(255,109,0,0.3); }
+    .dec-stat.MEDIUM   { color:var(--threat-medium);   border-color:rgba(255,214,0,0.3); }
+    .dec-stat.LOW      { color:var(--threat-low);      border-color:rgba(118,255,3,0.3); }
+    .dec-stat.CLEAR    { color:var(--threat-clear);    border-color:rgba(0,229,255,0.25); }
+
+    /* ═══ MOBILE ═════════════════════════════════ */
+    @media (max-width: 640px) {
+      .layout { grid-template-columns:1fr; overflow-y:auto; }
+      .col-main { border-right:none; border-bottom:1px solid var(--border); min-height:0; }
+      .feed-view { min-height:220px; }
+      .col-side  { max-height:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="alert-banner" id="alertBanner">⚠ CRITICAL ALERT — AI AGENT HAS FLAGGED IMMEDIATE THREAT</div>
+
+<nav class="nav">
+  <div class="nav-logo">AXERO<span class="accent">CAM</span><span class="version">v2.0 · COMMAND CENTER</span></div>
+  <div class="nav-center hide-mobile">
+    <div class="status-chip" id="camChip"><div class="dot" id="camDot"></div><span id="camTxt">OFFLINE</span></div>
+    <div class="status-chip" id="agentChip"><div class="dot" id="agentDot"></div><span id="agentTxt">AGENT</span></div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-time" id="navTime">00:00:00</span>
+    <a href="/" class="nav-link">📡 FEED</a>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- ════════════ LEFT COLUMN ════════════ -->
+  <div class="col-main">
+
+    <!-- Feed relay -->
+    <div class="sec-head">
+      <span class="sec-title">📷 RELAY FEED</span>
+      <span class="sec-meta" id="feedMeta">AWAITING STREAM</span>
+    </div>
+    <div class="feed-view">
+      <img id="dashFeed" src="" alt="">
+      <div class="feed-offline" id="feedOffline">
+        <div class="no-signal-box">
+          <div style="font-size:0.7rem; letter-spacing:0.2em; font-family:var(--terminal); color:var(--text-dim)">NO SIGNAL</div>
+          <div style="font-size:0.5rem; color:var(--text-faint); margin-top:4px; letter-spacing:0.12em">Open feed page to start camera</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Threat meter -->
+    <div class="threat-panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <span style="font-family:var(--terminal); font-size:0.75rem; letter-spacing:0.16em; color:var(--cyan)">THREAT ASSESSMENT</span>
+        <span style="font-size:0.48rem; color:var(--text-dim)" id="threatMode">MODE: RULE-BASED</span>
+      </div>
+      <div class="threat-row">
+        <span class="threat-label" id="tLevelLabel">CLEAR</span>
+        <div class="threat-bar-wrap">
+          <div class="threat-bar-fill" id="tBarFill" style="width:0%;"></div>
+        </div>
+        <span class="threat-score" id="tScore">0</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-panel">
+      <div class="metric"><div class="metric-label">CAMERA</div><div class="metric-value" id="mCam" style="font-size:0.88rem;color:var(--text-dim)">OFFLINE</div></div>
+      <div class="metric"><div class="metric-label">FPS</div><div class="metric-value" id="mFps">—</div></div>
+      <div class="metric"><div class="metric-label">TOTAL DET.</div><div class="metric-value" id="mTotalDet">0</div></div>
+      <div class="metric"><div class="metric-label">CLIENTS</div><div class="metric-value" id="mClients">—</div></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="ctrl-panel">
+      <div class="ctrl-lbl">⚙ OPERATOR CONTROLS</div>
+      <div class="ctrl-row">
+        <button class="btn btn-cyan"   onclick="openFeed()">📡 OPEN FEED</button>
+        <button class="btn btn-yellow" onclick="triggerAgentSim()">🤖 RUN AGENT</button>
+        <button class="btn btn-red"    onclick="clearAll()">✕ CLEAR ALL</button>
+      </div>
+      <div class="ctrl-row">
+        <button class="btn" id="alertBtn" onclick="toggleAlert()">⚠ TOGGLE ALERT</button>
+        <button class="btn" id="agentToggleBtn" onclick="toggleAgent()">🤖 AGENT: ON</button>
+        <button class="btn btn-cyan" onclick="refreshStatus()">↺ REFRESH</button>
+      </div>
+    </div>
+
+    <!-- Detection log -->
+    <div class="det-panel">
+      <div class="sec-head">
+        <span class="sec-title">🎯 DETECTIONS</span>
+        <span class="sec-meta" id="detMeta">0 RECORDS</span>
+      </div>
+      <div class="log-header">
+        <span>#</span><span>TARGET</span><span style="text-align:right">CONF</span><span style="text-align:right">TIME</span>
+      </div>
+      <div class="det-scroll" id="detScroll">
+        <div class="log-empty">— NO DETECTIONS —</div>
+      </div>
+    </div>
+
+    <!-- Sys log -->
+    <div class="syslog-panel" id="syslogPanel"></div>
+
+  </div><!-- /col-main -->
+
+  <!-- ════════════ RIGHT COLUMN ════════════ -->
+  <div class="col-side">
+
+    <!-- Ollama status -->
+    <div class="ollama-panel">
+      <div class="ollama-info">
+        <div class="ollama-title">🧠 OLLAMA LLM STATUS</div>
+        <div class="ollama-model" id="ollamaModel">Checking…</div>
+      </div>
+      <div class="ollama-badge" id="ollamaBadge">
+        <div class="dot" id="ollamaDot"></div>
+        <span id="ollamaTxt">—</span>
+      </div>
+    </div>
+
+    <!-- GPS -->
+    <div class="sec-head">
+      <span class="sec-title">📍 LOCATION</span>
+      <span class="sec-meta" id="gpsMeta">LIVE</span>
+    </div>
+    <div class="gps-grid">
+      <div class="gps-item"><div class="gps-lbl">LATITUDE</div><div class="gps-val" id="gLat">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">LONGITUDE</div><div class="gps-val" id="gLon">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">TEMPERATURE</div><div class="gps-val" id="gTemp">—</div></div>
+      <div class="gps-item"><div class="gps-lbl">UPTIME</div><div class="gps-val" id="gUptime">—</div></div>
+    </div>
+
+    <!-- Decision stats -->
+    <div class="dec-stats" id="decStats">
+      <span class="dec-stat CRITICAL" id="dsCritical">CRITICAL: 0</span>
+      <span class="dec-stat HIGH"     id="dsHigh">HIGH: 0</span>
+      <span class="dec-stat MEDIUM"   id="dsMedium">MED: 0</span>
+      <span class="dec-stat LOW"      id="dsLow">LOW: 0</span>
+      <span class="dec-stat CLEAR"    id="dsClear">CLEAR: 0</span>
+    </div>
+
+    <!-- AI Decisions -->
+    <div class="decisions-panel">
+      <div class="sec-head">
+        <span class="sec-title">🤖 AI DECISIONS</span>
+        <span class="sec-meta" id="decMeta">0 ENTRIES</span>
+      </div>
+      <div class="decisions-scroll" id="decisionsScroll">
+        <div class="log-empty">— AGENT AWAITING DETECTIONS —</div>
+      </div>
+    </div>
+
+    <!-- Snapshots -->
+    <div class="snap-panel">
+      <div class="snap-lbl">RECENT SNAPSHOTS</div>
+      <div class="snap-row" id="snapRow">
+        <span style="font-size:0.52rem; color:var(--text-faint)">None yet.</span>
+      </div>
+    </div>
+
+  </div><!-- /col-side -->
+
+</div><!-- /layout -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────
+let alertActive  = false;
+let agentEnabled = true;
+let detCache     = [];
+let decCache     = [];
+let snapCache    = [];
+let frameTimer   = null;
+
+// ── Socket ─────────────────────────────────────────────────────
+const socket = io({ reconnectionAttempts: 30 });
+
+socket.on('connect', () => {
+  socket.emit('join_room', 'dashboard');
+  socket.emit('request_state');
+  cls('ollamaDot', 'on');
+  addSysLog('ok', 'Connected to AXEROCAM server.');
+});
+
+socket.on('disconnect', () => {
+  cls('ollamaDot', '');
+  addSysLog('warn', 'Server connection lost.');
+});
+
+// ── Full state on connect ───────────────────────────────────────
+socket.on('server_state', (s) => {
+  setCam(s.cameraActive);
+  setAlert(s.alertActive);
+  setAgent(s.agentEnabled);
+  setText('mTotalDet', s.totalDetections);
+  setText('mFps',      s.fps ? s.fps.toFixed(1) : '—');
+  setText('mClients',  s.connectedClients);
+  setText('ollamaModel', `Model: ${s.ollamaModel || 'N/A'}`);
+  setText('threatMode', `MODE: ${s.ollamaStatus === 'ONLINE' ? 'LLM ('+s.ollamaModel+')' : 'RULE-BASED'}`);
+  setOllama(s.ollamaStatus);
+  updateThreat(s.currentThreat, null, 0);
+  updateDecStats(s.decisionStats || {});
+  detCache = s.detectionLog || [];
+  renderDets();
+  decCache = s.decisions || [];
+  renderDecs();
+  snapCache = s.snapshotLog || [];
+  renderSnaps();
+  (s.sysLog || []).reverse().forEach(e => addSysLog(e.level, e.msg));
+});
+
+// ── Frame relay ────────────────────────────────────────────────
+socket.on('frame', (data) => {
+  const img = document.getElementById('dashFeed');
+  img.src   = data.imageData;
+  img.style.display = 'block';
+  document.getElementById('feedOffline').classList.add('hidden');
+  setText('feedMeta', `${data.fps ? data.fps.toFixed(1) : '—'} FPS · RELAY ACTIVE`);
+  setText('mFps',     data.fps ? data.fps.toFixed(1) : '—');
+  clearTimeout(frameTimer);
+  frameTimer = setTimeout(() => {
+    img.style.display = 'none';
+    document.getElementById('feedOffline').classList.remove('hidden');
+    setText('feedMeta', 'STREAM TIMEOUT');
+  }, 4500);
+});
+
+// ── Camera state ───────────────────────────────────────────────
+socket.on('camera_state',   ({ active }) => {
+  setCam(active);
+  if (!active) {
+    document.getElementById('dashFeed').style.display = 'none';
+    document.getElementById('feedOffline').classList.remove('hidden');
+    setText('feedMeta', 'CAMERA OFFLINE');
+  }
+});
+
+// ── New detection ───────────────────────────────────────────────
+socket.on('new_detection', (r) => {
+  detCache.unshift(r);
+  if (detCache.length > 100) detCache.pop();
+  renderDets();
+  setText('mTotalDet', r.id);
+  addSysLog('info', `Detection: ${r.label} @ ${r.confidence}% conf`);
+});
+
+// ── AI decision from agent ──────────────────────────────────────
+socket.on('agent_decision', (dec) => {
+  decCache.unshift(dec);
+  if (decCache.length > 100) decCache.pop();
+  renderDecs();
+  updateThreat(dec.threatLevel, dec.threatColor, dec.score);
+  updateDecStats(null, dec);
+  setText('decMeta', decCache.length + ' ENTRIES');
+  addSysLog('agent', `[AI:${dec.agentMode}] ${dec.threatLevel} (${dec.score}/100) — ${dec.narrative.slice(0,70)}…`);
+});
+
+// ── Threat level broadcast ──────────────────────────────────────
+socket.on('threat_level', ({ level, color, score }) => {
+  updateThreat(level, color, score);
+});
+
+// ── Alert ───────────────────────────────────────────────────────
+socket.on('alert_state', ({ active }) => setAlert(active));
+
+// ── Agent state ─────────────────────────────────────────────────
+socket.on('agent_state', ({ enabled }) => setAgent(enabled));
+
+// ── Snapshot saved ──────────────────────────────────────────────
+socket.on('snapshot_saved', (e) => {
+  snapCache.unshift(e);
+  if (snapCache.length > 10) snapCache.pop();
+  renderSnaps();
+  addSysLog('ok', `Snapshot: ${e.filename}`);
+});
+
+// ── GPS ─────────────────────────────────────────────────────────
+socket.on('gps_update', (c) => {
+  setText('gLat', c.lat ? c.lat.toFixed(5) : '—');
+  setText('gLon', c.lon ? c.lon.toFixed(5) : '—');
+});
+
+// ── Client count ────────────────────────────────────────────────
+socket.on('client_count',   (n) => setText('mClients', n));
+socket.on('detection_count',(n) => setText('mTotalDet', n));
+
+socket.on('detections_cleared', () => { detCache=[]; renderDets(); });
+socket.on('decisions_cleared',  () => { decCache=[]; renderDecs(); });
+
+socket.on('sys_log', (e) => addSysLog(e.level, e.msg));
+
+// ═══════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════
+function setText(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+function cls(id, c) { const e=document.getElementById(id); if(!e) return; e.className='dot'; if(c) e.classList.add(c); }
+
+function setCam(active) {
+  cls('camDot', active?'on':'');
+  setText('camTxt', active?'LIVE':'OFFLINE');
+  document.getElementById('camChip').className='status-chip'+(active?' active':'');
+  const m = document.getElementById('mCam');
+  if(m) { m.textContent=active?'LIVE':'OFFLINE'; m.style.color=active?'var(--green)':'var(--text-dim)'; }
+}
+
+function setAlert(active) {
+  alertActive = active;
+  document.getElementById('alertBanner').classList.toggle('show', active);
+  const btn = document.getElementById('alertBtn');
+  if(btn) { btn.textContent=active?'⚠ ALERT: ON':'⚠ TOGGLE ALERT'; btn.className=active?'btn active-alert':'btn btn-orange'; }
+}
+
+function setAgent(enabled) {
+  agentEnabled = enabled;
+  const btn = document.getElementById('agentToggleBtn');
+  if(btn) { btn.textContent=`🤖 AGENT: ${enabled?'ON':'OFF'}`; btn.className=enabled?'btn btn-green':'btn btn-red'; }
+  cls('agentDot', enabled?'on':'err');
+  setText('agentTxt', enabled?'ACTIVE':'OFF');
+  document.getElementById('agentChip').className='status-chip'+(enabled?' active':'');
+}
+
+function setOllama(status) {
+  const isOn = status === 'ONLINE';
+  cls('ollamaDot', isOn?'on':'warn');
+  setText('ollamaTxt', status);
+}
+
+const COLORS = { CRITICAL:'var(--threat-critical)', HIGH:'var(--threat-high)', MEDIUM:'var(--threat-medium)', LOW:'var(--threat-low)', CLEAR:'var(--threat-clear)' };
+
+function updateThreat(level, color, score) {
+  const c = color || COLORS[level] || 'var(--cyan)';
+  const el = document.getElementById('tLevelLabel');
+  if(el) { el.textContent=level; el.style.color=c; }
+  const fill = document.getElementById('tBarFill');
+  if(fill) { fill.style.width=(score||0)+'%'; fill.style.background=c; }
+  const sc = document.getElementById('tScore');
+  if(sc) { sc.textContent=(score||0); sc.style.color=c; }
+}
+
+let _decStatTotals = { CRITICAL:0, HIGH:0, MEDIUM:0, LOW:0, CLEAR:0 };
+
+function updateDecStats(stats, newDec) {
+  if(stats) { _decStatTotals = { ...stats }; }
+  if(newDec) { _decStatTotals[newDec.threatLevel] = (_decStatTotals[newDec.threatLevel]||0)+1; }
+  setText('dsCritical', 'CRITICAL: '+(_decStatTotals.CRITICAL||0));
+  setText('dsHigh',     'HIGH: '    +(_decStatTotals.HIGH||0));
+  setText('dsMedium',   'MED: '     +(_decStatTotals.MEDIUM||0));
+  setText('dsLow',      'LOW: '     +(_decStatTotals.LOW||0));
+  setText('dsClear',    'CLEAR: '   +(_decStatTotals.CLEAR||0));
+}
+
+// ── Render detection log ────────────────────────────────────────
+function renderDets() {
+  const el = document.getElementById('detScroll');
+  setText('detMeta', detCache.length+' RECORDS');
+  if(!detCache.length) { el.innerHTML='<div class="log-empty">— NO DETECTIONS —</div>'; return; }
+  el.innerHTML = detCache.slice(0,60).map(r => {
+    const t = r.timestamp ? r.timestamp.slice(11,19) : '--:--:--';
+    const cc = r.confidence>=80?'#ff6666':r.confidence>=60?'#ffcc44':'var(--green)';
+    return `<div class="log-entry">
+      <span class="log-id">#${String(r.id).padStart(3,'0')}</span>
+      <span class="log-lbl">● ${r.label}</span>
+      <span class="log-conf" style="color:${cc}">${r.confidence}%</span>
+      <span class="log-time">${t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Render AI decision cards ────────────────────────────────────
+function renderDecs() {
+  const el = document.getElementById('decisionsScroll');
+  setText('decMeta', decCache.length+' ENTRIES');
+  if(!decCache.length) { el.innerHTML='<div class="log-empty">— AGENT AWAITING DETECTIONS —</div>'; return; }
+  el.innerHTML = decCache.slice(0,40).map(d => {
+    const t = d.timestamp ? d.timestamp.slice(11,19) : '--:--:--';
+    const scoreBar = Math.round((d.score/100)*60);
+    return `<div class="decision-card ${d.threatLevel}">
+      <div class="decision-header">
+        <span class="decision-level ${d.threatLevel}">▸ ${d.threatLevel} [${d.score}/100]</span>
+        <span class="decision-meta">${t} · TGT:${d.targetCount}</span>
+      </div>
+      <div class="decision-narrative">${escHtml(d.narrative || '')}</div>
+      <div class="decision-action">${escHtml(d.simulatedActions || '')}</div>
+      <div class="decision-agent">⚙ ${d.agentMode} · CONF:${d.maxConfidence}% · ID:${d.id||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Render snapshots ────────────────────────────────────────────
+function renderSnaps() {
+  const el = document.getElementById('snapRow');
+  if(!snapCache.length) { el.innerHTML='<span style="font-size:0.5rem;color:var(--text-faint)">None yet.</span>'; return; }
+  el.innerHTML = snapCache.slice(0,6).map(s =>
+    `<img class="snap-thumb" src="${s.url}" title="${s.filename}"
+         onclick="window.open('${s.url}','_blank')"
+         onerror="this.style.display='none'">`
+  ).join('');
+}
+
+// ── Add sys log line ─────────────────────────────────────────────
+function addSysLog(level, msg) {
+  const el  = document.getElementById('syslogPanel');
+  const t   = new Date().toLocaleTimeString('en-GB');
+  const div = document.createElement('div');
+  div.className = `syslog-line ${level}`;
+  div.textContent = `[${t}] ${msg}`;
+  el.insertBefore(div, el.firstChild);
+  while(el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+// ═══════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════
+function openFeed() { window.open('/','_blank'); }
+
+async function triggerAgentSim() {
+  // Sends a simulated detection payload to the agent for testing
+  socket.emit('trigger_agent_analysis', {
+    targets: [
+      { label:'HUMAN', confidence: 0.78 + Math.random()*0.2, bbox:[50,80,200,300] },
+      ...(Math.random() > 0.5 ? [{ label:'HUMAN', confidence: 0.55+Math.random()*0.3, bbox:[300,100,180,280] }] : []),
+    ],
+    lat:  28.6139 + (Math.random()-0.5)*0.01,
+    lon:  77.2090 + (Math.random()-0.5)*0.01,
+    temp: (28+Math.random()*8).toFixed(1),
+    timestamp: new Date().toISOString(),
+  });
+  addSysLog('agent', 'Manual agent simulation triggered.');
+}
+
+async function clearAll() {
+  if(!confirm('Clear all detection + decision logs?')) return;
+  await fetch('/api/detections/clear', { method:'POST' });
+  await fetch('/api/decisions/clear',  { method:'POST' });
+}
+
+async function toggleAlert() {
+  alertActive = !alertActive;
+  await fetch('/api/alert', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({active:alertActive}) });
+}
+
+async function toggleAgent() {
+  await fetch('/api/agent/toggle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:!agentEnabled}) });
+}
+
+async function refreshStatus() {
+  try {
+    const d = await fetch('/api/status').then(r=>r.json());
+    setText('mFps',     d.fps);
+    setText('mTotalDet',d.totalDetections);
+    setText('mClients', d.connectedClients);
+    setText('gUptime',  d.uptime+'s');
+    setText('ollamaModel', 'Model: '+d.ollamaModel);
+    setOllama(d.ollamaStatus);
+    updateDecStats(d.decisionStats || {});
+    addSysLog('ok','Status refreshed.');
+  } catch(e) { addSysLog('error','Refresh failed: '+e.message); }
+}
+
+// ── Clock + periodic refresh ─────────────────────────────────────
+setInterval(() => setText('navTime', new Date().toTimeString().slice(0,8)), 1000);
+setInterval(refreshStatus, 12000);
+refreshStatus();
+</script>
+</body>
+</html>
