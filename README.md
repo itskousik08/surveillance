@@ -1,152 +1,144 @@
-# 🛡️ SENTINEL AI — Mobile Surveillance System
+# 🛡️ AXEROCAM v2.0 — AI Autonomous Surveillance System
 
-> A professional, portable AI-powered human detection & surveillance system.  
-> Runs fully **offline** on Android via Termux. Flask dashboard. MJPEG stream.  
+> Mobile-first AI surveillance with autonomous decision-making.  
+> TF.js human detection → AI threat assessment → real-time decision logs.  
+> **Fully offline capable.** Built for Termux / Android.  
 > Built by **AxeroAI · Kousik Debnath**
 
 ---
 
-## 📸 Features
+## 🧠 System Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  BROWSER (Mobile Chrome)                 │
+│  📷 getUserMedia → Camera Feed                          │
+│  🤖 TF.js COCO-SSD → Human Detection                   │
+│  🎨 Canvas HUD → Threat-colored tactical overlay        │
+│  📍 Geolocation API → Real GPS coordinates              │
+└─────────────────┬───────────────────────────────────────┘
+                  │  Socket.io (frames + detection events)
+┌─────────────────▼───────────────────────────────────────┐
+│               NODE.JS SERVER (Termux)                    │
+│  🚦 Socket.io → Frame relay to dashboard                │
+│  🧠 AI Decision Engine → Threat scoring + decisions     │
+│  🔗 Ollama LLM → Natural language threat assessment     │
+│  📋 Rule-based fallback → Deterministic decisions       │
+│  📸 Snapshot storage → /snapshots/*.jpg                  │
+│  🌐 REST API → /api/status, /api/decisions, etc.        │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚠️ Simulation Disclaimer
+
+All threat assessments, alerts, and simulated actions are **purely for educational/testing purposes**.  
+No real-world actions, weapons, or external communications are issued.  
+This system is designed for training simulations and research only.
+
+---
+
+## ✨ Features
 
 | Feature | Details |
 |---|---|
-| 🎯 Human Detection | OpenCV HOG (default) or YOLOv5/v8 (optional) |
-| 🖥️ Live MJPEG Feed | Stream with tactical HUD overlay |
-| 📍 GPS Logging | Simulated by default; real GPS via Termux API |
-| 🌡️ Temperature | Simulated; real via `/sys/class/thermal/` |
-| 🌐 Dual URL | Feed URL + Full dashboard URL |
-| ⚠️ Alert Mode | Red overlay + pulsing alert on all panels |
-| 📸 Snapshots | Saved to `snapshots/` folder |
-| 📋 Detection Log | Timestamped records with confidence scores |
-| 📴 Fully Offline | No internet required after install |
+| 🎯 Human Detection | TF.js COCO-SSD `lite_mobilenet_v2` — filters `person` class |
+| 🧠 AI Agent | Ollama LLM (phi3:mini / tinyllama) OR rule-based engine |
+| 📊 Threat Levels | CLEAR → LOW → MEDIUM → HIGH → CRITICAL (5-tier scoring) |
+| 📋 Decision Logs | Timestamped AI decisions with narrative + simulated action |
+| ⚡ Auto-Alert | Agent auto-triggers CRITICAL alert when score ≥ threshold |
+| 📡 Dual URL | URL 1: Camera feed · URL 2: Full AI command dashboard |
+| 🌐 Socket.io Relay | Live frame relay from feed → dashboard in real-time |
+| 📍 GPS | Real via browser Geolocation API (sim fallback) |
+| 📸 Snapshots | Canvas frame → saved JPEG with metadata |
+| 🔁 Manual Sim | "RUN AGENT" button to test AI decisions without camera |
+| 📴 Offline | Works offline after first TF.js model cache |
 
 ---
 
-## 📱 Quick Start (Termux on Android)
+## 📱 Quick Start — Termux on Android
 
 ### Step 1 — Install Termux
-1. Install **Termux** from [F-Droid](https://f-droid.org/packages/com.termux/) (recommended over Play Store)
-2. Open Termux
+Download **Termux** from [F-Droid](https://f-droid.org/packages/com.termux/)  
+*(Do NOT use Play Store — outdated version)*
 
-### Step 2 — Setup Environment
-
+### Step 2 — Install Node.js
 ```bash
-# Update packages
 pkg update && pkg upgrade -y
-
-# Install Python and dependencies
-pkg install python python-pip git libopencv -y
-
-# Install camera support (required for OpenCV VideoCapture)
-pkg install termux-api -y
+pkg install nodejs git -y
+node --version   # should be v18+
 ```
 
 ### Step 3 — Clone the Repository
-
 ```bash
-git clone https://github.com/YOUR_USERNAME/sentinel-ai.git
-cd sentinel-ai
+git clone https://github.com/YOUR_USERNAME/axerocam.git
+cd axerocam
 ```
 
-### Step 4 — Install Python Dependencies
-
+### Step 4 — Install Dependencies
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
-> ⏱️ This may take 2–5 minutes on mobile. OpenCV headless is ~20MB.
-
-### Step 5 — Run the System
-
+### Step 5 — Start the System
 ```bash
-python main.py
+node start
 ```
 
----
+### Step 6 — Open in Browser
+Open **Chrome** on your Android phone:
 
-## 🌐 Access the Dashboard
-
-Once running, open your **mobile browser** and go to:
-
-| URL | Purpose |
+| URL | Page |
 |---|---|
-| `http://localhost:5000/` | 📡 Live camera feed only |
-| `http://localhost:5000/dashboard` | 🖥️ Full command dashboard |
-
-> To access from another device on the same Wi-Fi:  
-> Use `http://<your-phone-IP>:5000/dashboard`  
-> Find your IP with: `ifconfig` or `ip addr`
+| `http://localhost:3000/` | 📡 Live camera feed |
+| `http://localhost:3000/dashboard` | 🖥️ AI Command Center |
 
 ---
 
-## 🔧 Configuration
+## 🧠 Enable Ollama LLM (Optional — Better AI Decisions)
 
-Edit `main.py` → `CONFIG` block at the top:
+By default the system uses a fast rule-based decision engine.  
+For richer, natural-language threat assessments, install Ollama:
 
-```python
-CONFIG = {
-    "camera_index": 0,          # 0 = rear camera, 1 = front
-    "frame_width": 640,         # Lower for better performance
-    "frame_height": 480,
-    "jpeg_quality": 70,         # 50-85 recommended on mobile
-    "detection_interval": 3,    # Run AI every N frames
-    "confidence_threshold": 0.45,
-    "port": 5000,
-}
-```
-
----
-
-## 🤖 Enabling YOLOv5 (Optional — Better Accuracy)
-
+### On Desktop/Laptop (easier):
 ```bash
-# Install PyTorch CPU-only (lighter)
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
 
-# Install ultralytics
-pip install ultralytics
+# Pull a lightweight model
+ollama pull phi3:mini     # ~2.2GB — recommended
+# or
+ollama pull tinyllama     # ~637MB — lightest
+
+# Start Ollama server
+ollama serve
 ```
 
-Then uncomment in `requirements.txt`:
-```
-ultralytics>=8.0.0
-```
-
-The first run will auto-download `yolov5su.pt` (~6MB). YOLO will automatically be used instead of HOG.
-
----
-
-## 📍 Real GPS (Termux API)
-
-1. Install **Termux:API** app from F-Droid
-2. In Termux: `pkg install termux-api`
-3. In `main.py`, replace the `GPSProvider.get()` method:
-
-```python
-import subprocess, json
-
-def get(self):
-    result = subprocess.run(
-        ['termux-location', '-p', 'gps', '-r', 'once'],
-        capture_output=True, text=True, timeout=10
-    )
-    d = json.loads(result.stdout)
-    return d['latitude'], d['longitude']
+### On Termux (experimental):
+```bash
+pkg install ollama -y
+ollama pull tinyllama
+ollama serve
 ```
 
----
+### Connect AXEROCAM to Ollama:
+```bash
+# Default: connects to http://localhost:11434
+node start
 
-## 🌡️ Real Temperature Sensor
+# Custom URL:
+OLLAMA_URL=http://192.168.x.x:11434 node start
 
-Replace `get_temperature()` in `main.py`:
+# Custom model:
+OLLAMA_MODEL=tinyllama node start
+```
 
-```python
-def get_temperature():
-    try:
-        with open('/sys/class/thermal/thermal_zone0/temp') as f:
-            return round(int(f.read()) / 1000, 1)
-    except:
-        return 28.0  # fallback
+When Ollama is online, the dashboard shows:
+```
+🧠 OLLAMA LLM STATUS  ● ONLINE
+Model: phi3:mini
+MODE: LLM (phi3:mini)
 ```
 
 ---
@@ -154,36 +146,117 @@ def get_temperature():
 ## 📁 Project Structure
 
 ```
-sentinel-ai/
-├── main.py                 # Core engine: Flask + OpenCV + detection
-├── requirements.txt        # Python dependencies
-├── README.md               # This file
-├── templates/
-│   ├── feed.html           # URL 1 — Live camera feed page
-│   └── dashboard.html      # URL 2 — Full command dashboard
-├── static/                 # (Empty — all CSS/JS inline)
-└── snapshots/              # Auto-created; stores .jpg snapshots
+axerocam/
+├── start.js                   # ← Main server (Express + Socket.io + AI pipeline)
+├── package.json
+├── README.md
+├── .gitignore
+│
+├── agent/
+│   ├── decision-engine.js     # ← AI agent: Ollama LLM + rule-based fallback
+│   └── threat-model.js        # ← Threat scoring, levels, action catalogue
+│
+├── public/
+│   ├── index.html             # ← URL 1: Camera feed + HUD overlay
+│   ├── dashboard.html         # ← URL 2: AI command center
+│   ├── css/
+│   │   └── axerocam.css       # ← Classified terminal aesthetic
+│   └── js/
+│       └── detection.js       # ← TF.js COCO-SSD engine + canvas HUD
+│
+└── snapshots/                 # ← Auto-created; JPEG snapshots saved here
 ```
 
 ---
 
-## 🚀 Roadmap / Extensions
+## 🔧 Configuration
 
-- [ ] Multi-camera support (USB OTG / IP cameras)
-- [ ] Drone feed integration (RTSP stream)
-- [ ] IoT sensor overlay (PIR, ultrasonic)
-- [ ] Email/SMS alert via Termux notifications
-- [ ] Night vision mode (IR filter toggle)
-- [ ] Recording to `.mp4` file
-- [ ] Cloud sync for detection logs
+### Server (`start.js` → `CONFIG`):
+```javascript
+const CONFIG = {
+  port:              3000,
+  agentEnabled:      true,         // Enable/disable AI agent
+  agentDebounceMs:   1200,         // Min ms between AI analyses (CPU relief)
+  frameRelayEnabled: true,         // Relay frames to dashboard
+};
+```
+
+### Detection (`public/js/detection.js` → constructor):
+```javascript
+this.opts = {
+  detectionInterval: 5,    // Run AI every N frames (lower = more CPU)
+  confidence:        0.42, // Detection threshold (0.0–1.0)
+  jpegQuality:       0.68, // Frame relay quality
+};
+```
+
+### Ollama (environment variables):
+```bash
+OLLAMA_URL=http://localhost:11434   # Ollama endpoint
+OLLAMA_MODEL=phi3:mini              # Model to use
+PORT=3000                           # Server port
+```
 
 ---
 
-## ⚖️ License & Usage
+## 🌐 LAN Access
 
-This software is provided for **educational, research, and personal security** purposes only.  
-Use responsibly and in compliance with local laws and privacy regulations.
+```bash
+# Find your phone's IP
+ip addr show wlan0
+
+# Access from any device on same Wi-Fi:
+http://192.168.x.x:3000/dashboard
+```
 
 ---
 
-*Built with ❤️ by AxeroAI — Kousik Debnath*
+## 🤖 AI Decision Format
+
+Each decision object produced by the agent:
+
+```json
+{
+  "id":               "A3F1B2",
+  "threatLevel":      "HIGH",
+  "threatCode":       4,
+  "threatColor":      "#ff6d00",
+  "priority":         "URGENT",
+  "score":            72,
+  "targetCount":      2,
+  "maxConfidence":    88,
+  "narrative":        "Two high-confidence targets detected in observation zone. Persistent presence over multiple frames. HIGH threat classification applied.",
+  "simulatedActions": "[SIM] Escalate watch status to HIGH ALERT.",
+  "agentMode":        "LLM (phi3:mini)",
+  "timestamp":        "2025-01-15T14:32:11.000Z",
+  "location": { "lat": 28.6139, "lon": 77.2090, "temp": "31.2" }
+}
+```
+
+---
+
+## 🚀 Roadmap
+
+- [ ] SQLite persistent detection + decision log
+- [ ] Multi-camera socket namespace support
+- [ ] Drone RTSP stream integration
+- [ ] Termux push notification on CRITICAL alert
+- [ ] IoT sensor overlay (PIR motion, IR)
+- [ ] Custom threat zone polygons
+- [ ] Whisper.cpp voice command integration
+
+---
+
+## ⬆️ Push to GitHub
+
+```bash
+git init
+git add .
+git commit -m "feat: AXEROCAM v2.0 — AI agent integration"
+git remote add origin https://github.com/YOUR_USERNAME/axerocam.git
+git push -u origin main
+```
+
+---
+
+*Built with ⚡ by AxeroAI — Kousik Debnath · For educational simulation use only.*

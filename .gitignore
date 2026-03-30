@@ -1,38 +1,11 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-
-# Virtual environments
-venv/
-env/
-.venv/
-.env/
-
-# YOLO model files (auto-downloaded — don't commit large binaries)
-*.pt
-*.onnx
-*.torchscript
-
-# Snapshots (user data — don't commit)
+node_modules/
 snapshots/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
+.env
+.env.*
+npm-debug.log*
 .DS_Store
 Thumbs.db
-
-# Logs
 *.log
+.idea/
+.vscode/
+*.swp

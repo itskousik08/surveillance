@@ -1,0 +1,21 @@
+{
+  "name": "axerocam",
+  "version": "2.0.0",
+  "description": "AXEROCAM — AI-powered mobile surveillance system with autonomous decision-making agent. TF.js detection, Ollama LLM integration, real-time dashboard. Built for Termux.",
+  "author": "AxeroAI · Kousik Debnath",
+  "license": "MIT",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node start.js"
+  },
+  "engines": { "node": ">=18.0.0" },
+  "dependencies": {
+    "express":   "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors":      "^2.8.5",
+    "uuid":      "^9.0.0",
+    "node-fetch": "^3.3.2"
+  },
+  "keywords": ["surveillance","ai-agent","tensorflowjs","ollama","termux","mobile","detection"]
+}
